@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<!--
+  Knox topology configuration for Apache Kyuubi integration.
+  
+  This file should be placed in the Knox gateway's conf/topologies directory
+  as 'kyuubi.xml' (or any desired topology name).
+  
+  This topology configuration enables:
+  - Kyuubi WebUI access through Knox gateway
+  - Authentication integration with various providers
+  - Authorization and identity assertion
+  - High availability support for multiple Kyuubi instances
+-->
+
+<topology>
+    
+    <!-- Gateway configuration -->
+    <gateway>
+        <!-- Provider configurations for authentication, authorization, etc. -->
+        
+        <!-- Authentication Provider -->
+        <!-- Option 1: LDAP Authentication -->
+        <provider>
+            <role>authentication</role>
+            <name>ShiroProvider</name>
+            <enabled>true</enabled>
+            <param>
+                <name>sessionTimeout</name>
+                <value>30</value>
+            </param>
+            <param>
+                <name>main.ldapRealm</name>
+                <value>org.apache.knox.gateway.shirorealm.KnoxLdapRealm</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory</name>
+                <value>org.apache.knox.gateway.shirorealm.KnoxLdapContextFactory</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.contextFactory</name>
+                <value>$ldapContextFactory</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory.url</name>
+                <value>ldap://ldap-server:389</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory.systemUsername</name>
+                <value>cn=admin,dc=example,dc=com</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory.systemPassword</name>
+                <value>admin-password</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.searchBase</name>
+                <value>dc=example,dc=com</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.userObjectClass</name>
+                <value>person</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.userSearchAttributeName</name>
+                <value>uid</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.userSearchBase</name>
+                <value>ou=people,dc=example,dc=com</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.groupSearchBase</name>
+                <value>ou=groups,dc=example,dc=com</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.authorizationEnabled</name>
+                <value>true</value>
+            </param>
+            <param>
+                <name>urls./**</name>
+                <value>authcBasic</value>
+            </param>
+        </provider>
+        
+        <!-- Option 2: Kerberos Authentication (Alternative) -->
+        <!--
+        <provider>
+            <role>authentication</role>
+            <name>HadoopAuth</name>
+            <enabled>false</enabled>
+            <param>
+                <name>config.prefix</name>
+                <value>hadoop.auth.config</value>
+            </param>
+            <param>
+                <name>hadoop.auth.config.type</name>
+                <value>kerberos</value>
+            </param>
+            <param>
+                <name>hadoop.auth.config.kerberos.principal</name>
+                <value>HTTP/knox-server.example.com@EXAMPLE.COM</value>
+            </param>
+            <param>
+                <name>hadoop.auth.config.kerberos.keytab</name>
+                <value>/etc/security/keytabs/knox.service.keytab</value>
+            </param>
+            <param>
+                <name>hadoop.auth.config.kerberos.name.rules</name>
+                <value>DEFAULT</value>
+            </param>
+        </provider>
+        -->
+        
+        <!-- Identity Assertion Provider -->
+        <provider>
+            <role>identity-assertion</role>
+            <name>Default</name>
+            <enabled>true</enabled>
+            <param>
+                <name>group.principal.mapping</name>
+                <value>*=users;admin=admin</value>
+            </param>
+        </provider>
+        
+        <!-- Authorization Provider -->
+        <provider>
+            <role>authorization</role>
+            <name>AclsAuthz</name>
+            <enabled>true</enabled>
+            <param>
+                <name>kyuubi.acl</name>
+                <value>admin;kyuubi-users;*</value>
+            </param>
+        </provider>
+        
+        <!-- HostMap Provider for service discovery -->
+        <provider>
+            <role>hostmap</role>
+            <name>static</name>
+            <enabled>true</enabled>
+            <param>
+                <name>localhost</name>
+                <value>kyuubi-server1.example.com,kyuubi-server2.example.com</value>
+            </param>
+        </provider>
+        
+    </gateway>
+    
+    <!-- Service definitions -->
+    
+    <!-- Kyuubi WebUI Service -->
+    <service>
+        <role>KYUUBI</role>
+        <!-- Multiple Kyuubi instances for high availability -->
+        <url>http://kyuubi-server1.example.com:10099</url>
+        <url>http://kyuubi-server2.example.com:10099</url>
+        <url>http://kyuubi-server3.example.com:10099</url>
+        
+        <!-- Service-specific parameters -->
+        <param>
+            <name>httpclient.connectionTimeout</name>
+            <value>5000</value>
+        </param>
+        <param>
+            <name>httpclient.socketTimeout</name>
+            <value>60000</value>
+        </param>
+        
+        <!-- Load balancing configuration -->
+        <param>
+            <name>ha.enabled</name>
+            <value>true</value>
+        </param>
+        <param>
+            <name>ha.maxFailoverAttempts</name>
+            <value>3</value>
+        </param>
+        <param>
+            <name>ha.failoverSleep</name>
+            <value>1000</value>
+        </param>
+        <param>
+            <name>ha.maxRetryAttempts</name>
+            <value>3</value>
+        </param>
+        <param>
+            <name>ha.retrySleep</name>
+            <value>1000</value>
+        </param>
+    </service>
+    
+    <!-- Optional: Include other Hadoop ecosystem services -->
+    
+    <!-- HDFS WebUI (if needed) -->
+    <!--
+    <service>
+        <role>WEBHDFS</role>
+        <url>http://namenode1.example.com:9870/webhdfs</url>
+        <url>http://namenode2.example.com:9870/webhdfs</url>
+    </service>
+    -->
+    
+    <!-- YARN ResourceManager WebUI (if needed) -->
+    <!--
+    <service>
+        <role>RESOURCEMANAGER</role>
+        <url>http://resourcemanager1.example.com:8088/ws</url>
+        <url>http://resourcemanager2.example.com:8088/ws</url>
+    </service>
+    -->
+    
+    <!-- Spark History Server (if needed) -->
+    <!--
+    <service>
+        <role>SPARKHISTORYUI</role>
+        <url>http://spark-history-server.example.com:18080</url>
+    </service>
+    -->
+    
+</topology>
