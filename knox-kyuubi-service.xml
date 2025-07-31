@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<service role="KYUUBI" name="kyuubi" version="1.0.0">
+    <policies>
+        <policy role="webappsec"/>
+        <policy role="authentication" name="Anonymous"/>
+        <policy role="rewrite"/>
+        <policy role="authorization"/>
+    </policies>
+    <routes>
+        <!-- Kyuubi WebUI root path -->
+        <route path="/kyuubi">
+            <rewrite apply="KYUUBI/kyuubi/outbound/headers" to="response.headers"/>
+            <rewrite apply="KYUUBI/kyuubi/outbound/html" to="response.body"/>
+        </route>
+        
+        <!-- Kyuubi WebUI with trailing slash -->
+        <route path="/kyuubi/">
+            <rewrite apply="KYUUBI/kyuubi/outbound/headers" to="response.headers"/>
+            <rewrite apply="KYUUBI/kyuubi/outbound/html" to="response.body"/>
+        </route>
+        
+        <!-- Kyuubi WebUI static resources and API endpoints -->
+        <route path="/kyuubi/**">
+            <rewrite apply="KYUUBI/kyuubi/outbound/headers" to="response.headers"/>
+            <rewrite apply="KYUUBI/kyuubi/outbound/html" to="response.body"/>
+            <rewrite apply="KYUUBI/kyuubi/outbound/css" to="response.body"/>
+            <rewrite apply="KYUUBI/kyuubi/outbound/javascript" to="response.body"/>
+            <rewrite apply="KYUUBI/kyuubi/outbound/json" to="response.body"/>
+        </route>
+        
+        <!-- REST API routes for Kyuubi -->
+        <route path="/kyuubi/api/**"/>
+        
+        <!-- Static assets routes -->
+        <route path="/kyuubi/static/**"/>
+        <route path="/kyuubi/assets/**"/>
+        <route path="/kyuubi/js/**"/>
+        <route path="/kyuubi/css/**"/>
+        <route path="/kyuubi/images/**"/>
+        <route path="/kyuubi/fonts/**"/>
+        
+        <!-- Favicon and other common web resources -->
+        <route path="/kyuubi/favicon.ico"/>
+        <route path="/kyuubi/manifest.json"/>
+    </routes>
+    
+    <!-- Use PassAllHeadersDispatch to ensure proper header handling for WebUI -->
+    <dispatch classname="org.apache.hadoop.gateway.dispatch.PassAllHeadersDispatch"/>
+</service>
