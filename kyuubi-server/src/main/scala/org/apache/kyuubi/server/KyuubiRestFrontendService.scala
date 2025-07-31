@@ -127,6 +127,23 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
     errorHandler.addErrorPage(404, "/")
     servletHandler.setErrorHandler(errorHandler)
     server.addHandler(servletHandler)
+
+    // Install Knox proxy handler if Knox integration is enabled
+    installKnoxProxy()
+  }
+
+  private def installKnoxProxy(): Unit = {
+    if (conf.get(KyuubiConf.KNOX_PROXY_ENABLED)) {
+      import org.apache.kyuubi.server.ui.KnoxProxyServlet
+      val knoxContextPath = conf.get(KyuubiConf.KNOX_CONTEXT_PATH)
+      val knoxProxyServlet = new KnoxProxyServlet(conf)
+      val knoxHandler = JettyUtils.createServletHandler(knoxContextPath, knoxProxyServlet)
+      
+      val authenticationFactory = new KyuubiHttpAuthenticationFactory(conf)
+      server.addHandler(authenticationFactory.httpHandlerWrapperFactory.wrapHandler(knoxHandler))
+      
+      info(s"Knox proxy installed at context path: $knoxContextPath")
+    }
   }
 
   private def startBatchChecker(): Unit = {

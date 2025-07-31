@@ -1038,6 +1038,74 @@ object KyuubiConf {
     .checkValue(p => p == 0 || (p > 1024 && p < 65535), "Invalid Port number")
     .createWithDefault(10099)
 
+  // Knox Integration Configuration
+  val KNOX_PROXY_ENABLED: ConfigEntry[Boolean] = buildConf("kyuubi.frontend.knox.proxy.enabled")
+    .doc("Enable Knox proxy for Kyuubi WebUI. When enabled, Kyuubi WebUI will be accessible " +
+      "through Apache Knox gateway.")
+    .version("1.9.0")
+    .serverOnly
+    .booleanConf
+    .createWithDefault(false)
+
+  val KNOX_GATEWAY_URL: ConfigEntry[Option[String]] = buildConf("kyuubi.frontend.knox.gateway.url")
+    .doc("Knox gateway URL for Kyuubi WebUI proxy. This should be the base URL of Knox gateway " +
+      "including protocol, host and port (e.g., https://knox-gateway:8443).")
+    .version("1.9.0")
+    .serverOnly
+    .stringConf
+    .createOptional
+
+  val KNOX_SERVICE_NAME: ConfigEntry[String] = buildConf("kyuubi.frontend.knox.service.name")
+    .doc("Knox service name for Kyuubi WebUI. This should match the service name defined in " +
+      "Knox topology configuration.")
+    .version("1.9.0")
+    .serverOnly
+    .stringConf
+    .createWithDefault("KYUUBI")
+
+  val KNOX_TOPOLOGY_NAME: ConfigEntry[String] = buildConf("kyuubi.frontend.knox.topology.name")
+    .doc("Knox topology name for Kyuubi WebUI. This should match the topology name defined in " +
+      "Knox configuration.")
+    .version("1.9.0")
+    .serverOnly
+    .stringConf
+    .createWithDefault("kyuubi")
+
+  val KNOX_CONTEXT_PATH: ConfigEntry[String] = buildConf("kyuubi.frontend.knox.context.path")
+    .doc("Knox context path for Kyuubi WebUI. This is the path prefix used by Knox to route " +
+      "requests to Kyuubi WebUI.")
+    .version("1.9.0")
+    .serverOnly
+    .stringConf
+    .createWithDefault("/kyuubi")
+
+  val KNOX_AUTHENTICATION_ENABLED: ConfigEntry[Boolean] = 
+    buildConf("kyuubi.frontend.knox.authentication.enabled")
+      .doc("Enable Knox authentication integration. When enabled, Kyuubi will trust Knox " +
+        "authentication headers and use them for user identification.")
+      .version("1.9.0")
+      .serverOnly
+      .booleanConf
+      .createWithDefault(true)
+
+  val KNOX_PRINCIPAL_HEADER: ConfigEntry[String] = 
+    buildConf("kyuubi.frontend.knox.principal.header")
+      .doc("HTTP header name used by Knox to pass the authenticated user principal. " +
+        "Knox typically uses 'SM_USER' or 'X-Forwarded-User' header.")
+      .version("1.9.0")
+      .serverOnly
+      .stringConf
+      .createWithDefault("SM_USER")
+
+  val KNOX_GROUPS_HEADER: ConfigEntry[String] = 
+    buildConf("kyuubi.frontend.knox.groups.header")
+      .doc("HTTP header name used by Knox to pass the user groups. " +
+        "Knox typically uses 'SM_GROUPS' header.")
+      .version("1.9.0")
+      .serverOnly
+      .stringConf
+      .createWithDefault("SM_GROUPS")
+
   val FRONTEND_MYSQL_BIND_HOST: ConfigEntry[Option[String]] =
     buildConf("kyuubi.frontend.mysql.bind.host")
       .doc("Hostname or IP of the machine on which to run the MySQL frontend service.")
