@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<service role="KYUUBIUI" name="kyuubiui" version="1.9.0">
+    <!-- 
+    策略配置：定义该服务使用的安全策略
+    - webappsec: Web应用安全策略
+    - authentication: 身份验证，这里设置为Anonymous允许匿名访问
+    - rewrite: URL重写策略
+    - authorization: 授权策略
+    -->
+    <policies>
+        <policy role="webappsec"/>
+        <policy role="authentication" name="Anonymous"/>
+        <policy role="rewrite"/>
+        <policy role="authorization"/>
+    </policies>
+    
+    <!-- 
+    路由配置：定义哪些URL路径会被这个服务处理
+    - /kyuubi: 处理根路径访问
+    - /kyuubi/**: 处理所有子路径访问，**表示匹配任意多级路径
+    -->
+    <routes>
+        <!-- 根路径路由 -->
+        <route path="/kyuubi">
+            <!-- 应用出站重写规则到响应体，处理页面中的相对链接 -->
+            <rewrite apply="KYUUBIUI/kyuubiui/outbound/links" to="response.body"/>
+        </route>
+        <!-- 通配符路由，处理所有子路径 -->
+        <route path="/kyuubi/**">
+            <!-- 应用出站重写规则到响应体 -->
+            <rewrite apply="KYUUBIUI/kyuubiui/outbound/links" to="response.body"/>
+        </route>
+    </routes>
+    
+    <!-- 
+    分发器配置：使用PassAllHeadersDispatch
+    - 与默认的REST API分发器不同，这个分发器不会进行Kerberos握手
+    - 透传所有HTTP头部信息
+    - 适用于Web UI代理场景
+    -->
+    <dispatch classname="org.apache.hadoop.gateway.dispatch.PassAllHeadersDispatch"/>
+</service>
