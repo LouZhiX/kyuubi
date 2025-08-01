@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Knox Topology配置文件修复版本
+  解决Kyuubi WebUI连接问题
+-->
+<topology>
+    <gateway>
+        <!-- 认证配置 -->
+        <provider>
+            <role>authentication</role>
+            <name>ShiroProvider</name>
+            <enabled>true</enabled>
+            <param>
+                <name>sessionTimeout</name>
+                <value>30</value>
+            </param>
+            <param>
+                <name>main.ldapRealm</name>
+                <value>org.apache.knox.gateway.shirorealm.KnoxLdapRealm</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory</name>
+                <value>org.apache.knox.gateway.shirorealm.KnoxLdapContextFactory</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.contextFactory</name>
+                <value>$ldapContextFactory</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory.url</name>
+                <value>ldap://your-ldap-server:389</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory.systemUsername</name>
+                <value>cn=knox,ou=service,dc=example,dc=com</value>
+            </param>
+            <param>
+                <name>main.ldapContextFactory.systemPassword</name>
+                <value>knox-password</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.searchBase</name>
+                <value>ou=people,dc=example,dc=com</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.userObjectClass</name>
+                <value>person</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.userSearchAttributeName</name>
+                <value>uid</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.authenticationCachingEnabled</name>
+                <value>false</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.contextFactory.environment[java.naming.security.authentication]</name>
+                <value>simple</value>
+            </param>
+            <param>
+                <name>urls./**</name>
+                <value>authcBasic</value>
+            </param>
+        </provider>
+
+        <!-- 授权配置 -->
+        <provider>
+            <role>authorization</role>
+            <name>AclsAuthz</name>
+            <enabled>true</enabled>
+        </provider>
+
+        <!-- Web应用安全配置 -->
+        <provider>
+            <role>webappsec</role>
+            <name>WebAppSec</name>
+            <enabled>true</enabled>
+            <param>
+                <name>xframe</name>
+                <value>SAMEORIGIN</value>
+            </param>
+        </provider>
+
+        <!-- 身份断言配置 -->
+        <provider>
+            <role>identity-assertion</role>
+            <name>Default</name>
+            <enabled>true</enabled>
+        </provider>
+
+        <!-- 主机映射配置 -->
+        <provider>
+            <role>hostmap</role>
+            <name>static</name>
+            <enabled>true</enabled>
+            <param>
+                <name>localhost</name>
+                <value>sandbox.hortonworks.com</value>
+            </param>
+        </provider>
+    </gateway>
+
+    <!-- 服务配置 -->
+    
+    <!-- HDFS WebHDFS 服务 -->
+    <service>
+        <role>WEBHDFS</role>
+        <url>http://namenode-host:9870/webhdfs</url>
+    </service>
+
+    <!-- YARN ResourceManager 服务 -->
+    <service>
+        <role>RESOURCEMANAGER</role>
+        <url>http://resourcemanager-host:8088/ws</url>
+    </service>
+
+    <!-- Spark History Server 服务 -->
+    <service>
+        <role>SPARKHISTORYUI</role>
+        <url>http://spark-history-host:18080</url>
+    </service>
+
+    <!-- 关键配置：Kyuubi WebUI 服务 -->
+    <service>
+        <role>KYUUBIUI</role>
+        <!-- 修复：确保URL指向正确的Kyuubi主机和端口 -->
+        <url>http://kyuubi-host:10099</url>
+        <param>
+            <name>httpclient.connectionTimeout</name>
+            <value>60000</value>
+        </param>
+        <param>
+            <name>httpclient.socketTimeout</name>
+            <value>60000</value>
+        </param>
+        <!-- 修复：添加重试配置 -->
+        <param>
+            <name>httpclient.maxRetryCount</name>
+            <value>3</value>
+        </param>
+        <!-- 修复：启用keep-alive -->
+        <param>
+            <name>httpclient.connectionKeepAlive</name>
+            <value>true</value>
+        </param>
+    </service>
+
+    <!-- Hive服务 (如果需要) -->
+    <service>
+        <role>HIVE</role>
+        <url>http://hiveserver2-host:10001/cliservice</url>
+    </service>
+
+    <!-- Livy服务 (如果需要) -->
+    <service>
+        <role>LIVY</role>
+        <url>http://livy-host:8998</url>
+    </service>
+
+    <!-- 应用程序配置 -->
+    <application>
+        <name>hdfsui</name>
+    </application>
+
+    <application>
+        <name>yarnui</name>
+    </application>
+
+    <application>
+        <name>sparkhistoryui</name>
+    </application>
+
+    <!-- 修复：添加Kyuubi WebUI应用程序 -->
+    <application>
+        <name>kyuubiui</name>
+    </application>
+
+</topology>
