@@ -3542,4 +3542,55 @@ object KyuubiConf {
       .version("1.9.1")
       .serverOnly
       .fallbackConf(HIVE_SERVER2_THRIFT_RESULTSET_DEFAULT_FETCH_SIZE)
+
+  // Knox Integration Configuration
+  val KNOX_INTEGRATION_ENABLED: ConfigEntry[Boolean] =
+    buildConf("kyuubi.knox.integration.enabled")
+      .doc("Whether to enable Knox integration for Kyuubi WebUI.")
+      .version("1.9.0")
+      .booleanConf
+      .createWithDefault(false)
+
+  val KNOX_GATEWAY_URL: OptionalConfigEntry[String] =
+    buildConf("kyuubi.knox.gateway.url")
+      .doc("The URL of Knox Gateway for Kyuubi WebUI integration.")
+      .version("1.9.0")
+      .stringConf
+      .createOptional
+
+  val KNOX_TOPOLOGY_NAME: ConfigEntry[String] =
+    buildConf("kyuubi.knox.topology.name")
+      .doc("The topology name for Kyuubi in Knox configuration.")
+      .version("1.9.0")
+      .stringConf
+      .createWithDefault("kyuubi")
+
+  val KNOX_SERVICE_PATH: ConfigEntry[String] =
+    buildConf("kyuubi.knox.service.path")
+      .doc("The service path for Kyuubi in Knox topology.")
+      .version("1.9.0")
+      .stringConf
+      .createWithDefault("/kyuubi")
+
+  val KNOX_SSL_ENABLED: ConfigEntry[Boolean] =
+    buildConf("kyuubi.knox.ssl.enabled")
+      .doc("Whether to enable SSL for Knox integration.")
+      .version("1.9.0")
+      .booleanConf
+      .createWithDefault(true)
+
+  val KNOX_AUTHENTICATION_ENABLED: ConfigEntry[Boolean] =
+    buildConf("kyuubi.knox.authentication.enabled")
+      .doc("Whether to enable authentication for Knox integration.")
+      .version("1.9.0")
+      .booleanConf
+      .createWithDefault(true)
+
+  val KNOX_PROXY_USERS: ConfigEntry[Seq[String]] =
+    buildConf("kyuubi.knox.proxy.users")
+      .doc("List of users allowed to proxy through Knox to Kyuubi.")
+      .version("1.9.0")
+      .stringConf
+      .toSequence()
+      .createWithDefault(Seq("knox"))
 }

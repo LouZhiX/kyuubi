@@ -35,6 +35,7 @@ import org.apache.kyuubi.server.api.v1.ApiRootResource
 import org.apache.kyuubi.server.http.authentication.{AuthenticationFilter, KyuubiHttpAuthenticationFactory}
 import org.apache.kyuubi.server.ui.{JettyServer, JettyUtils}
 import org.apache.kyuubi.service.{AbstractFrontendService, Serverable, Service, ServiceUtils}
+import org.apache.kyuubi.server.KnoxIntegrationService
 import org.apache.kyuubi.service.authentication.{AuthTypes, AuthUtils}
 import org.apache.kyuubi.session.{KyuubiSessionManager, SessionHandle}
 import org.apache.kyuubi.util.ThreadUtils
@@ -48,6 +49,7 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
   extends AbstractFrontendService("KyuubiRestFrontendService") {
 
   private var server: JettyServer = _
+  private var knoxIntegrationService: KnoxIntegrationService = _
 
   private val isStarted = new AtomicBoolean(false)
 
@@ -85,6 +87,11 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
 
   override def initialize(conf: KyuubiConf): Unit = synchronized {
     this.conf = conf
+    
+    // Initialize Knox integration service
+    knoxIntegrationService = new KnoxIntegrationService()
+    knoxIntegrationService.initialize(conf)
+    
     server = JettyServer(
       getName,
       host,
@@ -127,6 +134,37 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
     errorHandler.addErrorPage(404, "/")
     servletHandler.setErrorHandler(errorHandler)
     server.addHandler(servletHandler)
+    
+    // Add Knox integration support
+    if (knoxIntegrationService.isKnoxIntegrationEnabled) {
+      installKnoxIntegration()
+    }
+  }
+  
+  private def installKnoxIntegration(): Unit = {
+    // Add Knox health check endpoint
+    val knoxHealthHandler = new org.eclipse.jetty.server.handler.AbstractHandler {
+      override def handle(target: String, baseRequest: org.eclipse.jetty.server.Request, 
+                         request: javax.servlet.http.HttpServletRequest, 
+                         response: javax.servlet.http.HttpServletResponse): Unit = {
+        if (target == "/knox/health") {
+          response.setContentType("application/json")
+          response.setStatus(200)
+          val knoxUrl = knoxIntegrationService.getKnoxGatewayUrl
+          val healthInfo = s"""{
+            "knox_integration_enabled": ${knoxIntegrationService.isKnoxIntegrationEnabled},
+            "knox_gateway_url": "${knoxUrl.getOrElse("")}",
+            "knox_ssl_enabled": ${knoxIntegrationService.isKnoxSSLEnabled},
+            "knox_authentication_enabled": ${knoxIntegrationService.isKnoxAuthenticationEnabled}
+          }"""
+          response.getWriter.write(healthInfo)
+          baseRequest.setHandled(true)
+        }
+      }
+    }
+    server.addHandler(knoxHealthHandler)
+    
+    info(s"Knox integration installed. Gateway URL: ${knoxIntegrationService.getKnoxGatewayUrl.getOrElse("Not configured")}")
   }
 
   private def startBatchChecker(): Unit = {
@@ -205,6 +243,11 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
   override def start(): Unit = synchronized {
     if (!isStarted.get) {
       try {
+        // Start Knox integration service
+        if (knoxIntegrationService != null) {
+          knoxIntegrationService.start()
+        }
+        
         server.start()
         startInternal()
         waitForServerStarted()
@@ -217,6 +260,11 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
     }
     super.start()
     info(s"Exposing REST endpoint at: http://${server.getServerUri}")
+    
+    // Log Knox integration status
+    if (knoxIntegrationService != null && knoxIntegrationService.isKnoxIntegrationEnabled) {
+      info(s"Knox integration enabled. Gateway URL: ${knoxIntegrationService.getKnoxGatewayUrl.getOrElse("Not configured")}")
+    }
   }
 
   override def stop(): Unit = synchronized {
@@ -224,6 +272,12 @@ class KyuubiRestFrontendService(override val serverable: Serverable)
     if (isStarted.getAndSet(false)) {
       server.stop()
     }
+    
+    // Stop Knox integration service
+    if (knoxIntegrationService != null) {
+      knoxIntegrationService.stop()
+    }
+    
     super.stop()
   }
 
