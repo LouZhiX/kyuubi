@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+   Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+<!--
+   Complete Kyuubi WebUI rewrite rules
+   Handles all URL patterns including API calls like /api/v1/admin/sessions
+-->
+<rules>
+    <!-- ============================================ -->
+    <!--           入站重写规则 (IN Direction)        -->
+    <!-- ============================================ -->
+    
+    <!-- 1. 根路径重写 - 处理 /gateway/emr/kyuubi -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/root" pattern="*://*:*/**/kyuubi">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/"/>
+    </rule>
+    
+    <!-- 2. 主页面重写 - 处理 /gateway/emr/kyuubi/ -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/home" pattern="*://*:*/**/kyuubi/">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/"/>
+    </rule>
+    
+    <!-- 3. API接口重写 - 处理 /gateway/emr/kyuubi/api/v1/admin/sessions 等 -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/api" pattern="*://*:*/**/kyuubi/api/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/api/{**}"/>
+    </rule>
+    
+    <!-- 4. UI页面重写 - 处理 /gateway/emr/kyuubi/ui/management/session 等 -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/ui" pattern="*://*:*/**/kyuubi/ui/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/ui/{**}"/>
+    </rule>
+    
+    <!-- 5. 静态资源重写 - 处理 /gateway/emr/kyuubi/assets/* -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/assets" pattern="*://*:*/**/kyuubi/assets/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/assets/{**}"/>
+    </rule>
+    
+    <!-- 6. 静态资源重写 - 处理 /gateway/emr/kyuubi/static/* -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/static" pattern="*://*:*/**/kyuubi/static/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/static/{**}"/>
+    </rule>
+    
+    <!-- 7. CSS/JS资源重写 -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/css" pattern="*://*:*/**/kyuubi/css/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/css/{**}"/>
+    </rule>
+    
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/js" pattern="*://*:*/**/kyuubi/js/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/js/{**}"/>
+    </rule>
+    
+    <!-- 8. Favicon和其他图标 -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/favicon" pattern="*://*:*/**/kyuubi/favicon.ico">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/favicon.ico"/>
+    </rule>
+    
+    <!-- 9. WebSocket连接重写 (如果Kyuubi使用WebSocket) -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/ws" pattern="*://*:*/**/kyuubi/ws/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/ws/{**}"/>
+    </rule>
+    
+    <!-- 10. 通用路径重写 (最后匹配，处理其他所有路径) -->
+    <rule dir="IN" name="KYUUBIUI/kyuubi/inbound/path" pattern="*://*:*/**/kyuubi/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/{**}"/>
+    </rule>
+
+    <!-- ============================================ -->
+    <!--           出站重写规则 (OUT Direction)       -->
+    <!-- ============================================ -->
+    
+    <!-- 1. 重写HTTP响应头中的Location字段 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/headers/location" pattern="Location: {scheme}://{host}:{port}/{**}">
+        <rewrite template="Location: {$frontend[url]}/kyuubi/{**}"/>
+    </rule>
+    
+    <!-- 2. 重写HTML中的href属性 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/html/href" pattern="href=&quot;/{**}&quot;">
+        <rewrite template="href=&quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+    <!-- 3. 重写HTML中的src属性 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/html/src" pattern="src=&quot;/{**}&quot;">
+        <rewrite template="src=&quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+    <!-- 4. 重写HTML中的action属性 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/html/action" pattern="action=&quot;/{**}&quot;">
+        <rewrite template="action=&quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+    <!-- 5. 重写CSS中的url()函数 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/css/url" pattern="url\(/{**}\)">
+        <rewrite template="url({$frontend[url]}/kyuubi/{**})"/>
+    </rule>
+    
+    <!-- 6. 重写CSS中的@import -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/css/import" pattern="@import &quot;/{**}&quot;">
+        <rewrite template="@import &quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+    <!-- 7. 重写JavaScript中的API调用路径 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/js/api" pattern="&quot;/api/">
+        <rewrite template="&quot;{$frontend[url]}/kyuubi/api/"/>
+    </rule>
+    
+    <!-- 8. 重写JavaScript中的UI路径 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/js/ui" pattern="&quot;/ui/">
+        <rewrite template="&quot;{$frontend[url]}/kyuubi/ui/"/>
+    </rule>
+    
+    <!-- 9. 重写JSON响应中的URL字段 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/json/url" pattern='"url":"/{**}"'>
+        <rewrite template='"url":"{$frontend[url]}/kyuubi/{**}"'/>
+    </rule>
+    
+    <!-- 10. 重写JSON响应中的href字段 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/json/href" pattern='"href":"/{**}"'>
+        <rewrite template='"href":"{$frontend[url]}/kyuubi/{**}"'/>
+    </rule>
+    
+    <!-- 11. 重写Meta标签中的content属性 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/meta/content" pattern="content=&quot;/{**}&quot;">
+        <rewrite template="content=&quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+    <!-- 12. 重写链接标签中的href属性 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/link/href" pattern="&lt;link[^&gt;]*href=&quot;/{**}&quot;">
+        <rewrite template="&lt;link$1href=&quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+    <!-- 13. 重写Base标签 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubi/outbound/base" pattern="&lt;base href=&quot;/{**}&quot;">
+        <rewrite template="&lt;base href=&quot;{$frontend[url]}/kyuubi/{**}&quot;"/>
+    </rule>
+    
+</rules>
