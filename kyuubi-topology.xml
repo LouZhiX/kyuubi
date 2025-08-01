@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+
+<!-- 
+Knox Topology配置文件
+该文件定义了一个完整的Hadoop集群拓扑，包括Kyuubi WebUI服务
+文件名应为：kyuubi-cluster.xml，放置在 {KNOX_HOME}/conf/topologies/ 目录下
+-->
+<topology>
+    <gateway>
+        <!-- 
+        ======================
+        安全提供者配置
+        ======================
+        -->
+        
+        <!-- 
+        1. 身份验证提供者 - 使用Shiro进行LDAP认证
+        这里可以根据实际需求配置不同的认证方式
+        -->
+        <provider>
+            <role>authentication</role>
+            <name>ShiroProvider</name>
+            <enabled>true</enabled>
+            <param>
+                <!-- 会话超时时间（分钟） -->
+                <name>sessionTimeout</name>
+                <value>30</value>
+            </param>
+            <param>
+                <!-- LDAP Realm配置 -->
+                <name>main.ldapRealm</name>
+                <value>org.apache.knox.gateway.shirorealm.KnoxLdapRealm</value>
+            </param>
+            <param>
+                <!-- LDAP Context Factory配置 -->
+                <name>main.ldapContextFactory</name>
+                <value>org.apache.knox.gateway.shirorealm.KnoxLdapContextFactory</value>
+            </param>
+            <param>
+                <name>main.ldapRealm.contextFactory</name>
+                <value>$ldapContextFactory</value>
+            </param>
+            <param>
+                <!-- LDAP服务器地址 -->
+                <name>main.ldapRealm.contextFactory.url</name>
+                <value>ldap://ldap.example.com:389</value>
+            </param>
+            <param>
+                <!-- 用户DN模板 -->
+                <name>main.ldapRealm.userDnTemplate</name>
+                <value>uid={0},ou=people,dc=example,dc=com</value>
+            </param>
+            <param>
+                <!-- 认证机制 -->
+                <name>main.ldapRealm.contextFactory.authenticationMechanism</name>
+                <value>simple</value>
+            </param>
+            <param>
+                <!-- URL访问控制 -->
+                <name>urls./**</name>
+                <value>authcBasic</value>
+            </param>
+        </provider>
+
+        <!-- 
+        2. 身份断言提供者 - 用于身份映射
+        -->
+        <provider>
+            <role>identity-assertion</role>
+            <name>Default</name>
+            <enabled>true</enabled>
+        </provider>
+
+        <!-- 
+        3. 授权提供者 - 基于ACL的访问控制
+        -->
+        <provider>
+            <role>authorization</role>
+            <name>AclsAuthz</name>
+            <enabled>true</enabled>
+            <param>
+                <!-- Kyuubi WebUI访问控制列表 -->
+                <name>kyuubi.acl</name>
+                <value>kyuubi-admins;*;*</value>
+            </param>
+        </provider>
+
+        <!-- 
+        4. 主机映射提供者 - 处理内外网地址映射
+        在云环境或Docker环境中特别重要
+        -->
+        <provider>
+            <role>hostmap</role>
+            <name>static</name>
+            <enabled>true</enabled>
+            <param>
+                <!-- 外部访问地址到内部服务地址的映射 -->
+                <name>knox.example.com</name>
+                <value>kyuubi-server.internal</value>
+            </param>
+        </provider>
+
+        <!-- 
+        5. Web应用安全提供者 - 提供基础的Web安全功能
+        -->
+        <provider>
+            <role>webappsec</role>
+            <name>WebAppSec</name>
+            <enabled>true</enabled>
+            <param>
+                <!-- XSS保护 -->
+                <name>xss.protection.enabled</name>
+                <value>true</value>
+            </param>
+            <param>
+                <!-- CSRF保护 -->
+                <name>csrf.protection.enabled</name>
+                <value>true</value>
+            </param>
+        </provider>
+
+        <!-- 
+        6. 高可用提供者 - 支持Kyuubi集群的高可用性
+        当有多个Kyuubi实例时启用
+        -->
+        <provider>
+            <role>ha</role>
+            <name>HaProvider</name>
+            <enabled>true</enabled>
+            <param>
+                <name>KYUUBIUI</name>
+                <value>maxFailoverAttempts=3;failoverSleep=1000;maxRetryAttempts=300;retrySleep=1000;enabled=true</value>
+            </param>
+        </provider>
+    </gateway>
+
+    <!-- 
+    ======================
+    服务配置部分
+    ======================
+    -->
+
+    <!-- 
+    1. Kyuubi WebUI服务配置
+    这是核心配置，定义了Kyuubi WebUI服务的访问点
+    -->
+    <service>
+        <role>KYUUBIUI</role>
+        <!-- Kyuubi WebUI服务的实际地址，通常是Kyuubi服务器的WebUI端口 -->
+        <url>http://kyuubi-server.example.com:10099</url>
+        <param>
+            <!-- 服务版本 -->
+            <name>version</name>
+            <value>1.9.0</value>
+        </param>
+    </service>
+
+    <!-- 
+    2. 可选：Kyuubi REST API服务配置
+    如果需要通过Knox访问Kyuubi的REST API
+    -->
+    <service>
+        <role>KYUUBI</role>
+        <url>http://kyuubi-server.example.com:10099</url>
+    </service>
+
+    <!-- 
+    3. 可选：相关的Hadoop服务配置
+    根据实际部署情况添加需要的服务
+    -->
+    
+    <!-- HDFS WebHDFS -->
+    <service>
+        <role>WEBHDFS</role>
+        <url>http://namenode.example.com:9870/webhdfs</url>
+    </service>
+
+    <!-- Yarn Resource Manager -->
+    <service>
+        <role>RESOURCEMANAGER</role>
+        <url>http://resourcemanager.example.com:8088/ws</url>
+    </service>
+
+    <!-- Spark History Server -->
+    <service>
+        <role>SPARKHISTORYUI</role>
+        <url>http://spark-history.example.com:18080</url>
+    </service>
+
+    <!-- Hive Server2 -->
+    <service>
+        <role>HIVE</role>
+        <url>http://hiveserver2.example.com:10001/cliservice</url>
+    </service>
+
+    <!-- 
+    4. Knox管理服务 - 用于Knox自身的管理
+    -->
+    <service>
+        <role>KNOX</role>
+    </service>
+</topology>

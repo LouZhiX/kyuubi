@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<rules>
+    <!-- 
+    入站重写规则 - 处理客户端到Kyuubi的请求
+    
+    1. 根路径重写规则
+    pattern解析：*://*:*/**/kyuubi/
+    - 第一个*: 协议 (http/https)
+    - 第二个*: 主机名
+    - 第三个*: 端口
+    - **: 网关路径和拓扑名称
+    - kyuubi/: Kyuubi服务路径
+    -->
+    <rule dir="IN" name="KYUUBIUI/kyuubiui/inbound/root" pattern="*://*:*/**/kyuubi/">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/"/>
+    </rule>
+    
+    <!-- 
+    2. 子路径重写规则
+    pattern解析：*://*:*/**/kyuubi/{**}
+    - {**}: 捕获所有子路径参数
+    -->
+    <rule dir="IN" name="KYUUBIUI/kyuubiui/inbound/path" pattern="*://*:*/**/kyuubi/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/{**}"/>
+    </rule>
+    
+    <!-- 
+    3. API接口重写规则 - 处理Kyuubi REST API调用
+    -->
+    <rule dir="IN" name="KYUUBIUI/kyuubiui/inbound/api" pattern="*://*:*/**/kyuubi/api/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/api/{**}"/>
+    </rule>
+    
+    <!-- 
+    4. WebSocket连接重写规则 - 处理实时日志等WebSocket连接
+    -->
+    <rule dir="IN" name="KYUUBIUI/kyuubiui/inbound/ws" pattern="*://*:*/**/kyuubi/ws/{**}">
+        <rewrite template="{$serviceUrl[KYUUBIUI]}/ws/{**}"/>
+    </rule>
+    
+    <!-- 
+    出站重写规则 - 处理Kyuubi到客户端的响应
+    
+    这些规则用于修改HTML响应中的链接，确保页面内的相对链接能正确指向Knox网关
+    -->
+    
+    <!-- 1. 处理HTML中的相对CSS链接 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/css" pattern="href=&quot;css/{**}&quot;">
+        <rewrite template="href=&quot;{$frontend[path]}/kyuubi/css/{**}&quot;"/>
+    </rule>
+    
+    <!-- 2. 处理HTML中的相对JavaScript链接 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/js" pattern="src=&quot;js/{**}&quot;">
+        <rewrite template="src=&quot;{$frontend[path]}/kyuubi/js/{**}&quot;"/>
+    </rule>
+    
+    <!-- 3. 处理HTML中的相对图片链接 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/images" pattern="src=&quot;images/{**}&quot;">
+        <rewrite template="src=&quot;{$frontend[path]}/kyuubi/images/{**}&quot;"/>
+    </rule>
+    
+    <!-- 4. 处理HTML中的相对API调用链接 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/api" pattern="&quot;api/{**}&quot;">
+        <rewrite template="&quot;{$frontend[path]}/kyuubi/api/{**}&quot;"/>
+    </rule>
+    
+    <!-- 5. 处理HTML中的相对页面链接 -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/pages" pattern="href=&quot;{path}&quot;">
+        <rewrite template="href=&quot;{$frontend[path]}/kyuubi/{path}&quot;"/>
+    </rule>
+    
+    <!-- 
+    6. 处理特殊的WebSocket URL重写
+    这个规则特别重要，因为Kyuubi WebUI可能使用WebSocket进行实时通信
+    -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/websocket" pattern="ws://{host}:{port}/ws/{**}">
+        <rewrite template="ws://{$frontend[host]}:{$frontend[port]}{$frontend[path]}/kyuubi/ws/{**}"/>
+    </rule>
+    
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/websocket-secure" pattern="wss://{host}:{port}/ws/{**}">
+        <rewrite template="wss://{$frontend[host]}:{$frontend[port]}{$frontend[path]}/kyuubi/ws/{**}"/>
+    </rule>
+    
+    <!-- 
+    综合链接重写过滤器
+    这个过滤器将上述所有出站规则应用到HTML内容类型的响应
+    -->
+    <filter name="KYUUBIUI/kyuubiui/outbound/links">
+        <content type="text/html">
+            <!-- 应用CSS链接重写 -->
+            <apply path="href=&quot;css/{**}&quot;" rule="KYUUBIUI/kyuubiui/outbound/css"/>
+            <!-- 应用JavaScript链接重写 -->
+            <apply path="src=&quot;js/{**}&quot;" rule="KYUUBIUI/kyuubiui/outbound/js"/>
+            <!-- 应用图片链接重写 -->
+            <apply path="src=&quot;images/{**}&quot;" rule="KYUUBIUI/kyuubiui/outbound/images"/>
+            <!-- 应用API链接重写 -->
+            <apply path="&quot;api/{**}&quot;" rule="KYUUBIUI/kyuubiui/outbound/api"/>
+        </content>
+        
+        <!-- 处理JavaScript内容中的URL重写 -->
+        <content type="application/javascript">
+            <apply path="&quot;api/{**}&quot;" rule="KYUUBIUI/kyuubiui/outbound/api"/>
+            <apply path="ws://{host}:{port}/ws/{**}" rule="KYUUBIUI/kyuubiui/outbound/websocket"/>
+            <apply path="wss://{host}:{port}/ws/{**}" rule="KYUUBIUI/kyuubiui/outbound/websocket-secure"/>
+        </content>
+        
+        <!-- 处理JSON响应中的URL重写 -->
+        <content type="application/json">
+            <apply path="&quot;api/{**}&quot;" rule="KYUUBIUI/kyuubiui/outbound/api"/>
+        </content>
+    </filter>
+    
+    <!-- 
+    处理Kyuubi特定的响应头重写
+    这些规则处理Location头中的重定向URL
+    -->
+    <rule dir="OUT" name="KYUUBIUI/kyuubiui/outbound/location" pattern="{scheme}://{host}:{port}/{**}">
+        <rewrite template="{$frontend[scheme]}://{$frontend[host]}:{$frontend[port]}{$frontend[path]}/kyuubi/{**}"/>
+    </rule>
+</rules>
