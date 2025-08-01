@@ -1,0 +1,29 @@
+{
+  "role": "KYUUBI",
+  "name": "kyuubi",
+  "version": "1.0.0",
+  "params": {
+    "kyuubi-site": {
+      "kyuubi.frontend.rest.bind.port": "10099",
+      "kyuubi.frontend.rest.web.ui.enabled": "true"
+    }
+  },
+  "dispatch": {
+    "keeper": {
+      "default": "0.0.0.0:10099"
+    }
+  },
+  "deployment": {
+    "services": [
+      {
+        "name": "kyuubi",
+        "params": {
+          "kyuubi-site": {
+            "kyuubi.frontend.rest.bind.port": "10099",
+            "kyuubi.frontend.rest.web.ui.enabled": "true"
+          }
+        }
+      }
+    ]
+  }
+}
