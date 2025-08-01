@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  修复后的emr.xml topology配置
+  解决Kyuubi WebUI连接问题
+-->
+<topology>
+    <gateway>
+        <!-- 认证配置 - 临时使用匿名认证方便测试 -->
+        <provider>
+            <role>authentication</role>
+            <name>Anonymous</name>
+            <enabled>true</enabled>
+        </provider>
+
+        <!-- 授权配置 -->
+        <provider>
+            <role>authorization</role>
+            <name>AclsAuthz</name>
+            <enabled>true</enabled>
+            <param>
+                <name>knox.acl</name>
+                <value>*;*;*</value>
+            </param>
+        </provider>
+
+        <!-- Web应用安全配置 -->
+        <provider>
+            <role>webappsec</role>
+            <name>WebAppSec</name>
+            <enabled>true</enabled>
+            <param>
+                <name>xframe</name>
+                <value>SAMEORIGIN</value>
+            </param>
+        </provider>
+
+        <!-- 身份断言配置 -->
+        <provider>
+            <role>identity-assertion</role>
+            <name>Default</name>
+            <enabled>true</enabled>
+        </provider>
+    </gateway>
+
+    <!-- 服务配置 -->
+    
+    <!-- 修复：正确的Kyuubi WebUI服务配置 -->
+    <service>
+        <role>KYUUBIUI</role>
+        <!-- 修复：指向本地Kyuubi实例，使用HTTP而不是HTTPS -->
+        <url>http://localhost:10099</url>
+        <param>
+            <name>httpclient.connectionTimeout</name>
+            <value>60000</value>
+        </param>
+        <param>
+            <name>httpclient.socketTimeout</name>
+            <value>60000</value>
+        </param>
+        <!-- 修复：禁用SSL验证 -->
+        <param>
+            <name>httpclient.ssl.enabled</name>
+            <value>false</value>
+        </param>
+    </service>
+
+    <!-- HDFS WebHDFS 服务 (如果需要) -->
+    <service>
+        <role>WEBHDFS</role>
+        <url>http://localhost:9870/webhdfs</url>
+    </service>
+
+    <!-- YARN ResourceManager 服务 (如果需要) -->
+    <service>
+        <role>RESOURCEMANAGER</role>
+        <url>http://localhost:8088/ws</url>
+    </service>
+
+</topology>
